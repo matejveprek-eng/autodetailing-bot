@@ -38,7 +38,7 @@ KB_FILES = {
 
 KB_CACHE = {}
 
-# Registered users storage (in-memory for beta, can be moved to file/db later)
+# Registered users storage (in-memory for beta)
 REGISTERED_USERS = set()
 
 def load_kb_file(filename):
@@ -103,17 +103,27 @@ def get_relevant_kb(user_message):
     return KB_CACHE['free']
 
 async def log_conversation(user_id, username, message, response):
-    """Log conversation for analysis"""
+    """Log conversation for analysis - with verbose Railway logging"""
     if not LOG_CONVERSATIONS:
         return
     
     try:
+        # Log to Railway logs (stdout) - THIS IS THE MAIN LOG
+        logger.info("="*60)
+        logger.info("📝 CONVERSATION LOG")
+        logger.info(f"👤 User: {username} (ID: {user_id})")
+        logger.info(f"💬 Message: {message[:200]}{'...' if len(message) > 200 else ''}")
+        logger.info(f"🤖 Response: {response[:200]}{'...' if len(response) > 200 else ''}")
+        logger.info(f"📊 Stats: Message {len(message)} chars, Response {len(response)} chars")
+        logger.info("="*60)
+        
+        # Also save to file (backup, will be lost on redeploy)
         log_entry = {
             'timestamp': datetime.now().isoformat(),
             'user_id': user_id,
             'username': username,
             'message': message,
-            'response': response[:500]  # Truncate long responses
+            'response': response[:500]
         }
         
         log_dir = 'logs'
@@ -122,8 +132,11 @@ async def log_conversation(user_id, username, message, response):
         log_file = os.path.join(log_dir, f"conversations_{datetime.now().strftime('%Y%m')}.jsonl")
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
+            
+        logger.info(f"✅ Conversation also saved to file: {log_file}")
+        
     except Exception as e:
-        logger.error(f"Error logging conversation: {e}")
+        logger.error(f"❌ Error logging conversation: {e}", exc_info=True)
 
 def is_user_registered(user_id):
     """Check if user is registered"""
@@ -132,6 +145,7 @@ def is_user_registered(user_id):
 def register_user(user_id):
     """Register a new user"""
     REGISTERED_USERS.add(user_id)
+    logger.info(f"📋 Total registered users: {len(REGISTERED_USERS)}")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command with beta code registration"""
@@ -153,6 +167,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Pošlete mi otázku nebo fotku problému!"
             )
             await update.message.reply_text(welcome_message, parse_mode='Markdown')
+            logger.info(f"🔄 Returning user: {username} (ID: {user_id})")
             return
         
         # Not registered, ask for code
@@ -165,11 +180,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Kontaktujte autora pro přístup do beta testu.",
             parse_mode='Markdown'
         )
-        logger.info(f"User {username} (ID: {user_id}) tried to start without code")
+        logger.info(f"🚫 Unregistered user tried to start: {username} (ID: {user_id})")
         return
     
     # Get beta code from command
-    beta_code = context.args[0].upper()  # Convert to uppercase for case-insensitive
+    beta_code = context.args[0].upper()
     
     # Valid beta codes
     valid_codes = ['MVBOT26', 'VIPYOU26']
@@ -181,14 +196,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Správný formát: `/start VÁŠ_KÓD`",
             parse_mode='Markdown'
         )
-        logger.warning(f"User {username} (ID: {user_id}) used invalid code: {beta_code}")
+        logger.warning(f"⚠️ Invalid code attempt: {username} (ID: {user_id}) used: {beta_code}")
         return
     
     # Register user
     register_user(user_id)
     
     # Successful registration!
-    logger.info(f"✅ New beta user registered: {username} (ID: {user_id}) with code: {beta_code}")
+    logger.info(f"✅ NEW REGISTRATION: {username} (ID: {user_id}) with code: {beta_code}")
     
     # Welcome message
     welcome_message = (
@@ -274,10 +289,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
             parse_mode='Markdown'
         )
+        logger.warning(f"⚠️ Unregistered user tried to message: {username} (ID: {user_id})")
         return
     
     message_text = update.message.text
-    logger.info(f"Received message from {username}: {message_text[:50]}...")
+    logger.info(f"📩 Received message from {username}: {message_text[:50]}...")
     
     await update.message.chat.send_action("typing")
     
@@ -298,7 +314,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
         
         # Call Claude API with only relevant KB
-        logger.info("Calling Claude API...")
+        logger.info("🤖 Calling Claude API...")
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2000,
@@ -309,17 +325,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         bot_response = response.content[0].text
-        logger.info(f"Claude response: {len(bot_response)} chars")
+        logger.info(f"✅ Claude response: {len(bot_response)} chars")
         
         # Log conversation
         await log_conversation(user_id, username, message_text, bot_response)
         
         # Send response
         await update.message.reply_text(bot_response, parse_mode='Markdown')
-        logger.info("Response sent successfully")
+        logger.info("📤 Response sent successfully")
         
     except Exception as e:
-        logger.error(f"Error processing message: {e}", exc_info=True)
+        logger.error(f"❌ Error processing message: {e}", exc_info=True)
         
         error_msg = "Omlouvám se, něco se pokazilo."
         
@@ -340,23 +356,24 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
             parse_mode='Markdown'
         )
+        logger.warning(f"⚠️ Unregistered user tried to send photo: {username} (ID: {user_id})")
         return
     
     photo = update.message.photo[-1]
     caption = update.message.caption or "Analyzuj tuto fotku auta a poraď mi co s tím."
-    logger.info(f"Received photo from {username}")
+    logger.info(f"📸 Received photo from {username}")
     
     await update.message.chat.send_action("typing")
     
     try:
         # Download photo
-        logger.info("Downloading photo...")
+        logger.info("⬇️ Downloading photo...")
         photo_file = await photo.get_file()
         photo_bytes = await photo_file.download_as_bytearray()
         
         # Convert to base64
         photo_base64 = base64.b64encode(photo_bytes).decode('utf-8')
-        logger.info(f"Photo size: {len(photo_base64)} chars")
+        logger.info(f"📦 Photo size: {len(photo_base64)} chars")
         
         # Use minimal KB for photos (just FREE topics to save tokens)
         minimal_kb = KB_CACHE.get('free', '')
@@ -372,10 +389,10 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
         
         # Call Claude API with image
-        logger.info("Calling Claude API with image...")
+        logger.info("🤖 Calling Claude API with image...")
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=1500,  # Reduced for images
+            max_tokens=1500,
             system=f"{strict_prefix}\n\n{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{minimal_kb}",
             messages=[
                 {
@@ -399,17 +416,17 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         bot_response = response.content[0].text
-        logger.info(f"Photo analysis complete: {len(bot_response)} chars")
+        logger.info(f"✅ Photo analysis complete: {len(bot_response)} chars")
         
         # Log conversation
         await log_conversation(user_id, username, f"[PHOTO] {caption}", bot_response)
         
         # Send response
         await update.message.reply_text(bot_response, parse_mode='Markdown')
-        logger.info("Photo analysis sent successfully")
+        logger.info("📤 Photo analysis sent successfully")
         
     except Exception as e:
-        logger.error(f"Error processing photo: {e}", exc_info=True)
+        logger.error(f"❌ Error processing photo: {e}", exc_info=True)
         
         error_msg = "Omlouvám se, něco se pokazilo při analýze fotky."
         
@@ -422,26 +439,27 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle errors"""
-    logger.error(f"Update {update} caused error {context.error}", exc_info=context.error)
+    logger.error(f"❌ Update {update} caused error {context.error}", exc_info=context.error)
 
 def main():
     """Start the bot"""
-    logger.info("="*50)
-    logger.info("Starting AutoDetailing Bot...")
-    logger.info("="*50)
+    logger.info("="*60)
+    logger.info("🚀 Starting AutoDetailing Bot...")
+    logger.info("="*60)
     
     if not TELEGRAM_BOT_TOKEN:
-        logger.error("TELEGRAM_BOT_TOKEN not found!")
+        logger.error("❌ TELEGRAM_BOT_TOKEN not found!")
         return
     
     if not ANTHROPIC_API_KEY:
-        logger.error("ANTHROPIC_API_KEY not found!")
+        logger.error("❌ ANTHROPIC_API_KEY not found!")
         return
     
-    logger.info(f"Token: {TELEGRAM_BOT_TOKEN[:10]}...")
-    logger.info(f"API key: {ANTHROPIC_API_KEY[:20]}...")
-    logger.info(f"KB files loaded: {len(KB_CACHE)}")
-    logger.info("Beta codes: MVBOT26, VIPYOU26")
+    logger.info(f"🔑 Token: {TELEGRAM_BOT_TOKEN[:10]}...")
+    logger.info(f"🔑 API key: {ANTHROPIC_API_KEY[:20]}...")
+    logger.info(f"📚 KB files loaded: {len(KB_CACHE)}")
+    logger.info(f"🎫 Beta codes: MVBOT26, VIPYOU26")
+    logger.info(f"📝 Conversation logging: {'ENABLED' if LOG_CONVERSATIONS else 'DISABLED'}")
     
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
@@ -452,9 +470,11 @@ def main():
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_error_handler(error_handler)
     
-    logger.info("="*50)
+    logger.info("="*60)
     logger.info("✅ BOT IS RUNNING!")
-    logger.info("="*50)
+    logger.info("="*60)
+    logger.info("💡 Logs are being saved to Railway stdout")
+    logger.info("💡 View logs in Railway: Deployments → View Logs")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

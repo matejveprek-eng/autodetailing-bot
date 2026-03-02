@@ -291,19 +291,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info("Photo analysis response sent successfully")
         
     except Exception as e:
-    logger.error(f"Error processing photo: {e}", exc_info=True)
-    logger.error(f"Error type: {type(e).__name__}")
-    logger.error(f"Error details: {str(e)}")
-    
-    # More helpful error message
-    error_msg = "Omlouvám se, něco se pokazilo při analýze fotky."
-    
-    if "image" in str(e).lower():
-        error_msg += "\n\nPrávě řeším problém s analýzou obrázků. Zkuste prosím později."
-    elif "rate" in str(e).lower() or "429" in str(e):
-        error_msg += "\n\nMomentálně je vysoká zátěž. Zkuste to prosím za chvíli."
-    
-    await update.message.reply_text(error_msg)
+        logger.error(f"Error processing photo: {e}", exc_info=True)
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error details: {str(e)}")
+        
+        # More helpful error message
+        error_msg = "Omlouvám se, něco se pokazilo při analýze fotky."
+        
+        if "image" in str(e).lower():
+            error_msg += "\n\nPrávě řeším problém s analýzou obrázků. Zkuste prosím později."
+        elif "rate" in str(e).lower() or "429" in str(e):
+            error_msg += "\n\nMomentálně je vysoká zátěž. Zkuste to prosím za chvíli."
+        
+        await update.message.reply_text(error_msg)
 
 
 # Error handler
@@ -354,5 +354,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

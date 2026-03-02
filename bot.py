@@ -246,18 +246,80 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(error_msg)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle photo messages - DISABLED for now to avoid token limits"""
+    """Handle photo messages with optimized KB"""
     username = update.effective_user.username
+    user_id = update.effective_user.id
     
     if not is_allowed_user(username):
         return
     
-    # Temporarily disabled
-    await update.message.reply_text(
-        "Analýza fotek je momentálně v údržbě kvůli optimalizaci.\n\n"
-        "Prosím popište mi problém slovy a rád vám poradím!"
-    )
-    logger.info(f"Photo analysis request from {username} - temporarily disabled")
+    photo = update.message.photo[-1]
+    caption = update.message.caption or "Analyzuj tuto fotku auta a poraď mi co s tím."
+    logger.info(f"Received photo from {username}")
+    
+    await update.message.chat.send_action("typing")
+    
+    try:
+        # Download photo
+        logger.info("Downloading photo...")
+        photo_file = await photo.get_file()
+        photo_bytes = await photo_file.download_as_bytearray()
+        
+        # Convert to base64
+        photo_base64 = base64.b64encode(photo_bytes).decode('utf-8')
+        logger.info(f"Photo size: {len(photo_base64)} chars")
+        
+        # Use minimal KB for photos (just FREE topics to save tokens)
+        minimal_kb = KB_CACHE.get('free', '')
+        
+        # Call Claude API with image
+        logger.info("Calling Claude API with image...")
+        response = anthropic_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1500,  # Reduced for images
+            system=f"{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{minimal_kb}",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": photo_base64
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": caption
+                        }
+                    ]
+                }
+            ]
+        )
+        
+        bot_response = response.content[0].text
+        logger.info(f"Photo analysis complete: {len(bot_response)} chars")
+        
+        # Log conversation
+        await log_conversation(user_id, username, f"[PHOTO] {caption}", bot_response)
+        
+        # Send response
+        await update.message.reply_text(bot_response, parse_mode='Markdown')
+        logger.info("Photo analysis sent successfully")
+        
+    except Exception as e:
+        logger.error(f"Error processing photo: {e}", exc_info=True)
+        
+        error_msg = "Omlouvám se, něco se pokazilo při analýze fotky."
+        
+        if "429" in str(e) or "rate" in str(e).lower():
+            error_msg = "Momentálně je vysoká zátěž. Zkuste to prosím za chvíli."
+        elif "image" in str(e).lower() or "size" in str(e).lower():
+            error_msg = "Fotka je příliš velká. Zkuste menší rozlišení."
+        
+        await update.message.reply_text(error_msg)
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle errors"""

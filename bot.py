@@ -9,11 +9,22 @@ from dotenv import load_dotenv
 import base64
 
 # Load environment variables
-load_dotenv()
+load_dotenv()  # Načte .env pokud existuje (lokálně), na Railway ignoruje
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+
+# Debug - vypíšeme co máme
+if not TELEGRAM_BOT_TOKEN:
+    print("ERROR: TELEGRAM_BOT_TOKEN is not set!")
+else:
+    print(f"DEBUG: Token loaded: {TELEGRAM_BOT_TOKEN[:10]}...")
+    
+if not ANTHROPIC_API_KEY:
+    print("ERROR: ANTHROPIC_API_KEY is not set!")
+else:
+    print(f"DEBUG: API key loaded: {ANTHROPIC_API_KEY[:20]}...")
 ALLOWED_USERS = os.getenv('ALLOWED_USERS', '').split(',')
 LOG_CONVERSATIONS = os.getenv('LOG_CONVERSATIONS', 'true').lower() == 'true'
 

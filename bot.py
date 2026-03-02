@@ -14,7 +14,6 @@ load_dotenv()
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
-ALLOWED_USERS = os.getenv('ALLOWED_USERS', '').split(',')
 LOG_CONVERSATIONS = os.getenv('LOG_CONVERSATIONS', 'true').lower() == 'true'
 
 # Setup logging
@@ -38,6 +37,9 @@ KB_FILES = {
 }
 
 KB_CACHE = {}
+
+# Registered users storage (in-memory for beta, can be moved to file/db later)
+REGISTERED_USERS = set()
 
 def load_kb_file(filename):
     """Load a single knowledge base file"""
@@ -123,24 +125,74 @@ async def log_conversation(user_id, username, message, response):
     except Exception as e:
         logger.error(f"Error logging conversation: {e}")
 
-def is_allowed_user(username):
-    """Check if user is in allowed list"""
-    if not ALLOWED_USERS or ALLOWED_USERS == ['']:
-        return True
-    return username in ALLOWED_USERS
+def is_user_registered(user_id):
+    """Check if user is registered"""
+    return user_id in REGISTERED_USERS
+
+def register_user(user_id):
+    """Register a new user"""
+    REGISTERED_USERS.add(user_id)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /start command"""
+    """Handle /start command with beta code registration"""
     username = update.effective_user.username
+    user_id = update.effective_user.id
     
-    if not is_allowed_user(username):
+    # Check if user provided beta code
+    if not context.args or len(context.args) == 0:
+        # Check if already registered
+        if is_user_registered(user_id):
+            welcome_message = (
+                "👋 Vítejte zpět!\n\n"
+                "Jsem tu, abych vám pomohl s péčí o vaše auto.\n\n"
+                "**Co umím:**\n"
+                "✅ Poradit s mytím, leštěním, ošetřením\n"
+                "✅ Analyzovat fotky problémů na voze\n"
+                "✅ Navrhnout postup krok za krokem\n"
+                "✅ Varovat před chybami\n\n"
+                "Pošlete mi otázku nebo fotku problému!"
+            )
+            await update.message.reply_text(welcome_message, parse_mode='Markdown')
+            return
+        
+        # Not registered, ask for code
         await update.message.reply_text(
-            "Omlouvám se, tato beta verze je dostupná pouze pro vybrané testery.\n\n"
-            "Pokud máte zájem o přístup, kontaktujte prosím autora."
+            "👋 Vítejte v AutoDetailing Asistentovi!\n\n"
+            "Tento bot je momentálně v **beta testu**.\n\n"
+            "**Pro aktivaci potřebujete registrační kód.**\n\n"
+            "Napište: `/start VÁŠ_KÓD`\n\n"
+            "❓ Nemáte kód?\n"
+            "Kontaktujte autora pro přístup do beta testu.",
+            parse_mode='Markdown'
         )
+        logger.info(f"User {username} (ID: {user_id}) tried to start without code")
         return
     
+    # Get beta code from command
+    beta_code = context.args[0].upper()  # Convert to uppercase for case-insensitive
+    
+    # Valid beta codes
+    valid_codes = ['MVBOT26', 'VIPYOU26']
+    
+    if beta_code not in valid_codes:
+        await update.message.reply_text(
+            "❌ **Neplatný registrační kód.**\n\n"
+            "Zkontrolujte prosím překlepy nebo kontaktujte autora.\n\n"
+            "Správný formát: `/start VÁŠ_KÓD`",
+            parse_mode='Markdown'
+        )
+        logger.warning(f"User {username} (ID: {user_id}) used invalid code: {beta_code}")
+        return
+    
+    # Register user
+    register_user(user_id)
+    
+    # Successful registration!
+    logger.info(f"✅ New beta user registered: {username} (ID: {user_id}) with code: {beta_code}")
+    
+    # Welcome message
     welcome_message = (
+        "🎉 **Registrace úspěšná!**\n\n"
         "👋 Vítejte v AutoDetailing Asistentovi!\n\n"
         "Jsem tu, abych vám pomohl s péčí o vaše auto.\n\n"
         "**Co umím:**\n"
@@ -158,10 +210,18 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     await update.message.reply_text(welcome_message, parse_mode='Markdown')
-    logger.info(f"User {username} started the bot")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
+    user_id = update.effective_user.id
+    
+    if not is_user_registered(user_id):
+        await update.message.reply_text(
+            "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
+            parse_mode='Markdown'
+        )
+        return
+    
     help_text = (
         "**Jak mě používat:**\n\n"
         "**1. Položte otázku:**\n"
@@ -183,6 +243,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /feedback command"""
+    user_id = update.effective_user.id
+    
+    if not is_user_registered(user_id):
+        await update.message.reply_text(
+            "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
+            parse_mode='Markdown'
+        )
+        return
+    
     feedback_text = (
         "**Děkuji za zájem o zpětnou vazbu!**\n\n"
         "Prosím napište mi:\n"
@@ -200,7 +269,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.effective_user.username
     user_id = update.effective_user.id
     
-    if not is_allowed_user(username):
+    if not is_user_registered(user_id):
+        await update.message.reply_text(
+            "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
+            parse_mode='Markdown'
+        )
         return
     
     message_text = update.message.text
@@ -262,7 +335,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.effective_user.username
     user_id = update.effective_user.id
     
-    if not is_allowed_user(username):
+    if not is_user_registered(user_id):
+        await update.message.reply_text(
+            "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
+            parse_mode='Markdown'
+        )
         return
     
     photo = update.message.photo[-1]
@@ -363,8 +440,8 @@ def main():
     
     logger.info(f"Token: {TELEGRAM_BOT_TOKEN[:10]}...")
     logger.info(f"API key: {ANTHROPIC_API_KEY[:20]}...")
-    logger.info(f"Allowed users: {ALLOWED_USERS}")
     logger.info(f"KB files loaded: {len(KB_CACHE)}")
+    logger.info("Beta codes: MVBOT26, VIPYOU26")
     
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     

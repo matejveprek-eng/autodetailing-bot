@@ -212,12 +212,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Select relevant knowledge base
         relevant_kb = get_relevant_kb(message_text)
         
+        # Strict enforcement prefix
+        strict_prefix = """
+⚠️ KRITICKÉ INSTRUKCE - DODRŽUJ PŘÍSNĚ:
+1. Odpovídej POUZE na základě KNOWLEDGE BASE níže
+2. NIKDY nepoužívej informace ze svého tréninku
+3. NIKDY nevymýšlej termíny nebo postupy které nejsou v knowledge base
+4. Pokud něco není v KB → řekni to upřímně
+5. Nepoužívej fráze: "obecně se doporučuje", "profesionálové používají", "standardní postup je"
+6. Používej POUZE terminologii z knowledge base (ne "compound", "cut and polish", atd.)
+7. PŘED odpovědí zkontroluj: Je to SKUTEČNĚ v knowledge base?
+"""
+        
         # Call Claude API with only relevant KB
         logger.info("Calling Claude API...")
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2000,
-            system=f"{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{relevant_kb}",
+            system=f"{strict_prefix}\n\n{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{relevant_kb}",
             messages=[
                 {"role": "user", "content": message_text}
             ]
@@ -272,12 +284,22 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Use minimal KB for photos (just FREE topics to save tokens)
         minimal_kb = KB_CACHE.get('free', '')
         
+        # Strict enforcement prefix
+        strict_prefix = """
+⚠️ KRITICKÉ INSTRUKCE - DODRŽUJ PŘÍSNĚ:
+1. Odpovídej POUZE na základě KNOWLEDGE BASE níže
+2. NIKDY nepoužívej informace ze svého tréninku
+3. NIKDY nevymýšlej termíny nebo postupy které nejsou v knowledge base
+4. Pokud něco není v KB → řekni to upřímně
+5. Používej POUZE terminologii z knowledge base
+"""
+        
         # Call Claude API with image
         logger.info("Calling Claude API with image...")
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=1500,  # Reduced for images
-            system=f"{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{minimal_kb}",
+            system=f"{strict_prefix}\n\n{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{minimal_kb}",
             messages=[
                 {
                     "role": "user",

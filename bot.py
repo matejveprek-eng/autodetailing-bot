@@ -9,22 +9,11 @@ from dotenv import load_dotenv
 import base64
 
 # Load environment variables
-load_dotenv()  # Načte .env pokud existuje (lokálně), na Railway ignoruje
+load_dotenv()
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
-
-# Debug - vypíšeme co máme
-if not TELEGRAM_BOT_TOKEN:
-    print("ERROR: TELEGRAM_BOT_TOKEN is not set!")
-else:
-    print(f"DEBUG: Token loaded: {TELEGRAM_BOT_TOKEN[:10]}...")
-    
-if not ANTHROPIC_API_KEY:
-    print("ERROR: ANTHROPIC_API_KEY is not set!")
-else:
-    print(f"DEBUG: API key loaded: {ANTHROPIC_API_KEY[:20]}...")
 ALLOWED_USERS = os.getenv('ALLOWED_USERS', '').split(',')
 LOG_CONVERSATIONS = os.getenv('LOG_CONVERSATIONS', 'true').lower() == 'true'
 
@@ -38,33 +27,31 @@ logger = logging.getLogger(__name__)
 # Initialize Anthropic client
 anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
-# Load knowledge base
-def load_knowledge_base():
-    """Load all markdown files from knowledge_base directory"""
-    kb_files = [
-        'FREE_Zakladni_mytí.md',
-        'PREMIUM_01_Exterier_mytí_dekontaminace.md',
-        'PREMIUM_02_Exterier_lesteni_opravy.md',
-        'PREMIUM_03_Exterier_osetreni.md',
-        'PREMIUM_04_Interier.md',
-        'PREMIUM_05_Sezonni_priprava.md',
-    ]
-    
-    knowledge_base = ""
-    for filename in kb_files:
-        try:
-            filepath = os.path.join('knowledge_base', filename)
-            with open(filepath, 'r', encoding='utf-8') as f:
-                knowledge_base += f"\n\n=== {filename} ===\n\n"
-                knowledge_base += f.read()
-        except FileNotFoundError:
-            logger.warning(f"Knowledge base file not found: {filename}")
-        except Exception as e:
-            logger.error(f"Error loading {filename}: {e}")
-    
-    return knowledge_base
+# Knowledge base cache - load once at startup
+KB_FILES = {
+    'free': 'FREE_Zakladni_mytí.md',
+    'mytí': 'PREMIUM_01_Exterier_mytí_dekontaminace.md',
+    'leštění': 'PREMIUM_02_Exterier_lesteni_opravy.md',
+    'ošetření': 'PREMIUM_03_Exterier_osetreni.md',
+    'interiér': 'PREMIUM_04_Interier.md',
+    'sezóna': 'PREMIUM_05_Sezonni_priprava.md',
+}
 
-# Load AI instructions
+KB_CACHE = {}
+
+def load_kb_file(filename):
+    """Load a single knowledge base file"""
+    try:
+        filepath = os.path.join('knowledge_base', filename)
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        logger.warning(f"KB file not found: {filename}")
+        return ""
+    except Exception as e:
+        logger.error(f"Error loading {filename}: {e}")
+        return ""
+
 def load_ai_instructions():
     """Load AI instructions from file"""
     try:
@@ -72,21 +59,47 @@ def load_ai_instructions():
             return f.read()
     except FileNotFoundError:
         logger.error("AI_INSTRUKCE.md not found!")
-        return "Jsi profesionální autodetailing asistent s 17letou praxí."
+        return "Jsi profesionální autodetailing asistent s 17letou praxí. Komunikuješ česky a pomáháš s péčí o auta."
     except Exception as e:
         logger.error(f"Error loading AI instructions: {e}")
         return "Jsi profesionální autodetailing asistent s 17letou praxí."
 
-# Load resources
-logger.info("Loading knowledge base...")
-KNOWLEDGE_BASE = load_knowledge_base()
-logger.info(f"Knowledge base loaded: {len(KNOWLEDGE_BASE)} characters")
+# Load resources at startup
+logger.info("Loading knowledge base files...")
+for key, filename in KB_FILES.items():
+    KB_CACHE[key] = load_kb_file(filename)
+    logger.info(f"Loaded {key}: {len(KB_CACHE[key])} chars")
 
 logger.info("Loading AI instructions...")
 AI_INSTRUCTIONS = load_ai_instructions()
-logger.info("AI instructions loaded")
+logger.info(f"AI instructions loaded: {len(AI_INSTRUCTIONS)} chars")
 
-# Conversation logging
+def get_relevant_kb(user_message):
+    """
+    Select most relevant knowledge base based on keywords.
+    Returns only ONE file to stay under token limits.
+    """
+    message_lower = user_message.lower()
+    
+    # Keyword mapping with priority (most specific first)
+    keywords = {
+        'leštění': ['leštění', 'lešti', 'leštit', 'škrában', 'hologram', 'opravu', 'pdr', 'disk', 'světl', 'odřen'],
+        'ošetření': ['vosk', 'nano', 'keramik', 'ošetření', 'ochran', 'ppf', 'fólie', 'pneumatik', 'plast'],
+        'interiér': ['interiér', 'sedačk', 'kůže', 'kobere', 'tepován', 'vysáv', 'volant', 'displej', 'klimatizac'],
+        'sezóna': ['jaro', 'jar', 'zima', 'zim', 'nový vůz', 'používaný', 'sezón'],
+        'mytí': ['dekontaminace', 'hmyz', 'smůla', 'mytí', 'myj', 'umýt', 'čištění'],
+    }
+    
+    # Find best match
+    for category, words in keywords.items():
+        if any(word in message_lower for word in words):
+            logger.info(f"Selected KB category: {category}")
+            return KB_CACHE.get(category, KB_CACHE['free'])
+    
+    # Default to free topics
+    logger.info("Selected KB category: free (default)")
+    return KB_CACHE['free']
+
 async def log_conversation(user_id, username, message, response):
     """Log conversation for analysis"""
     if not LOG_CONVERSATIONS:
@@ -98,7 +111,7 @@ async def log_conversation(user_id, username, message, response):
             'user_id': user_id,
             'username': username,
             'message': message,
-            'response': response
+            'response': response[:500]  # Truncate long responses
         }
         
         log_dir = 'logs'
@@ -110,14 +123,12 @@ async def log_conversation(user_id, username, message, response):
     except Exception as e:
         logger.error(f"Error logging conversation: {e}")
 
-# Check if user is allowed
 def is_allowed_user(username):
     """Check if user is in allowed list"""
     if not ALLOWED_USERS or ALLOWED_USERS == ['']:
-        return True  # If no restriction, allow all
+        return True
     return username in ALLOWED_USERS
 
-# Command handlers
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command"""
     username = update.effective_user.username
@@ -184,9 +195,8 @@ async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(feedback_text, parse_mode='Markdown')
 
-# Message handlers
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle text messages"""
+    """Handle text messages with smart KB selection"""
     username = update.effective_user.username
     user_id = update.effective_user.id
     
@@ -196,23 +206,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text
     logger.info(f"Received message from {username}: {message_text[:50]}...")
     
-    # Send typing indicator
     await update.message.chat.send_action("typing")
     
     try:
-        # Call Claude API
+        # Select relevant knowledge base
+        relevant_kb = get_relevant_kb(message_text)
+        
+        # Call Claude API with only relevant KB
         logger.info("Calling Claude API...")
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2000,
-            system=f"{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{KNOWLEDGE_BASE}",
+            system=f"{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{relevant_kb}",
             messages=[
                 {"role": "user", "content": message_text}
             ]
         )
         
         bot_response = response.content[0].text
-        logger.info(f"Claude response length: {len(bot_response)} chars")
+        logger.info(f"Claude response: {len(bot_response)} chars")
         
         # Log conversation
         await log_conversation(user_id, username, message_text, bot_response)
@@ -223,120 +235,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         logger.error(f"Error processing message: {e}", exc_info=True)
-        await update.message.reply_text(
-            "Omlouvám se, něco se pokazilo. Zkuste to prosím znovu."
-        )
+        
+        error_msg = "Omlouvám se, něco se pokazilo."
+        
+        if "429" in str(e) or "rate" in str(e).lower():
+            error_msg = "Momentálně je vysoká zátěž. Zkuste to prosím za chvíli."
+        elif "401" in str(e) or "authentication" in str(e).lower():
+            error_msg = "Problém s API klíčem. Kontaktujte prosím správce."
+        
+        await update.message.reply_text(error_msg)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle photo messages"""
+    """Handle photo messages - DISABLED for now to avoid token limits"""
     username = update.effective_user.username
-    user_id = update.effective_user.id
     
     if not is_allowed_user(username):
         return
     
-    # Get photo
-    photo = update.message.photo[-1]  # Get highest resolution
-    caption = update.message.caption or "Co je na této fotce?"
-    logger.info(f"Received photo from {username} with caption: {caption}")
-    
-    # Send typing indicator
-    await update.message.chat.send_action("typing")
-    
-    try:
-        # Download photo
-        logger.info("Downloading photo...")
-        photo_file = await photo.get_file()
-        photo_bytes = await photo_file.download_as_bytearray()
-        
-        # Convert to base64
-        photo_base64 = base64.b64encode(photo_bytes).decode('utf-8')
-        logger.info(f"Photo converted to base64: {len(photo_base64)} chars")
-        
-        # Call Claude API with image
-        logger.info("Calling Claude API with image...")
-        response = anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
-            system=f"{AI_INSTRUCTIONS}\n\n=== KNOWLEDGE BASE ===\n\n{KNOWLEDGE_BASE}",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/jpeg",
-                                "data": photo_base64
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": caption
-                        }
-                    ]
-                }
-            ]
-        )
-        
-        bot_response = response.content[0].text
-        logger.info(f"Claude image analysis response: {len(bot_response)} chars")
-        
-        # Log conversation
-        await log_conversation(user_id, username, f"[PHOTO] {caption}", bot_response)
-        
-        # Send response
-        await update.message.reply_text(bot_response, parse_mode='Markdown')
-        logger.info("Photo analysis response sent successfully")
-        
-    except Exception as e:
-        logger.error(f"Error processing photo: {e}", exc_info=True)
-        logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error details: {str(e)}")
-        
-        # More helpful error message
-        error_msg = "Omlouvám se, něco se pokazilo při analýze fotky."
-        
-        if "image" in str(e).lower():
-            error_msg += "\n\nPrávě řeším problém s analýzou obrázků. Zkuste prosím později."
-        elif "rate" in str(e).lower() or "429" in str(e):
-            error_msg += "\n\nMomentálně je vysoká zátěž. Zkuste to prosím za chvíli."
-        
-        await update.message.reply_text(error_msg)
+    # Temporarily disabled
+    await update.message.reply_text(
+        "Analýza fotek je momentálně v údržbě kvůli optimalizaci.\n\n"
+        "Prosím popište mi problém slovy a rád vám poradím!"
+    )
+    logger.info(f"Photo analysis request from {username} - temporarily disabled")
 
-
-# Error handler
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle errors"""
     logger.error(f"Update {update} caused error {context.error}", exc_info=context.error)
 
-# Main function
 def main():
     """Start the bot"""
     logger.info("="*50)
     logger.info("Starting AutoDetailing Bot...")
     logger.info("="*50)
     
-    # Check configuration
     if not TELEGRAM_BOT_TOKEN:
-        logger.error("TELEGRAM_BOT_TOKEN not found in .env!")
+        logger.error("TELEGRAM_BOT_TOKEN not found!")
         return
     
     if not ANTHROPIC_API_KEY:
-        logger.error("ANTHROPIC_API_KEY not found in .env!")
+        logger.error("ANTHROPIC_API_KEY not found!")
         return
     
-    logger.info(f"Token configured: {TELEGRAM_BOT_TOKEN[:10]}...")
-    logger.info(f"API key configured: {ANTHROPIC_API_KEY[:20]}...")
+    logger.info(f"Token: {TELEGRAM_BOT_TOKEN[:10]}...")
+    logger.info(f"API key: {ANTHROPIC_API_KEY[:20]}...")
     logger.info(f"Allowed users: {ALLOWED_USERS}")
+    logger.info(f"KB files loaded: {len(KB_CACHE)}")
     
-    # Create application
-    logger.info("Creating Telegram application...")
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
-    # Add handlers
-    logger.info("Adding handlers...")
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
@@ -344,11 +291,9 @@ def main():
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_error_handler(error_handler)
     
-    # Start bot
     logger.info("="*50)
     logger.info("✅ BOT IS RUNNING!")
     logger.info("="*50)
-    logger.info("Press Ctrl+C to stop")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

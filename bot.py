@@ -16,12 +16,18 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 LOG_CONVERSATIONS = os.getenv('LOG_CONVERSATIONS', 'true').lower() == 'true'
 
-# Setup logging
+# Setup logging - clean and readable
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Suppress noisy loggers - NO MORE SPAM!
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
+logging.getLogger("anthropic").setLevel(logging.WARNING)
 
 # Initialize Anthropic client
 anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -48,10 +54,10 @@ def load_kb_file(filename):
         with open(filepath, 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        logger.warning(f"KB file not found: {filename}")
+        logger.warning(f"⚠️ KB file not found: {filename}")
         return ""
     except Exception as e:
-        logger.error(f"Error loading {filename}: {e}")
+        logger.error(f"❌ Error loading {filename}: {e}")
         return ""
 
 def load_ai_instructions():
@@ -60,21 +66,21 @@ def load_ai_instructions():
         with open('AI_INSTRUKCE.md', 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        logger.error("AI_INSTRUKCE.md not found!")
+        logger.error("❌ AI_INSTRUKCE.md not found!")
         return "Jsi profesionální autodetailing asistent s 17letou praxí. Komunikuješ česky a pomáháš s péčí o auta."
     except Exception as e:
-        logger.error(f"Error loading AI instructions: {e}")
+        logger.error(f"❌ Error loading AI instructions: {e}")
         return "Jsi profesionální autodetailing asistent s 17letou praxí."
 
 # Load resources at startup
-logger.info("Loading knowledge base files...")
+logger.info("📚 Loading knowledge base files...")
 for key, filename in KB_FILES.items():
     KB_CACHE[key] = load_kb_file(filename)
-    logger.info(f"Loaded {key}: {len(KB_CACHE[key])} chars")
+    logger.info(f"   ✅ {key}: {len(KB_CACHE[key])} chars")
 
-logger.info("Loading AI instructions...")
+logger.info("📋 Loading AI instructions...")
 AI_INSTRUCTIONS = load_ai_instructions()
-logger.info(f"AI instructions loaded: {len(AI_INSTRUCTIONS)} chars")
+logger.info(f"   ✅ AI instructions: {len(AI_INSTRUCTIONS)} chars")
 
 def get_relevant_kb(user_message):
     """
@@ -95,35 +101,46 @@ def get_relevant_kb(user_message):
     # Find best match
     for category, words in keywords.items():
         if any(word in message_lower for word in words):
-            logger.info(f"Selected KB category: {category}")
+            logger.info(f"🎯 Selected KB: {category}")
             return KB_CACHE.get(category, KB_CACHE['free'])
     
     # Default to free topics
-    logger.info("Selected KB category: free (default)")
+    logger.info("🎯 Selected KB: free (default)")
     return KB_CACHE['free']
 
 async def log_conversation(user_id, username, message, response):
-    """Log conversation for analysis - with verbose Railway logging"""
+    """Log conversation for analysis - SUPER VISIBLE VERSION"""
     if not LOG_CONVERSATIONS:
         return
     
     try:
-        # Log to Railway logs (stdout) - THIS IS THE MAIN LOG
-        logger.info("="*60)
-        logger.info("📝 CONVERSATION LOG")
-        logger.info(f"👤 User: {username} (ID: {user_id})")
-        logger.info(f"💬 Message: {message[:200]}{'...' if len(message) > 200 else ''}")
-        logger.info(f"🤖 Response: {response[:200]}{'...' if len(response) > 200 else ''}")
-        logger.info(f"📊 Stats: Message {len(message)} chars, Response {len(response)} chars")
-        logger.info("="*60)
+        # MEGA VISIBLE LOG BLOCK
+        logger.info("")
+        logger.info("━" * 80)
+        logger.info("━" * 80)
+        logger.info("                    📝 NOVÁ KONVERZACE 📝")
+        logger.info("━" * 80)
+        logger.info(f"👤 UŽIVATEL: {username}")
+        logger.info(f"🆔 USER ID: {user_id}")
+        logger.info("─" * 80)
+        logger.info(f"💬 DOTAZ:")
+        logger.info(f"   {message[:300]}{'...' if len(message) > 300 else ''}")
+        logger.info("─" * 80)
+        logger.info(f"🤖 ODPOVĚĎ:")
+        logger.info(f"   {response[:300]}{'...' if len(response) > 300 else ''}")
+        logger.info("─" * 80)
+        logger.info(f"📊 STATISTIKY: Dotaz {len(message)} znaků | Odpověď {len(response)} znaků")
+        logger.info("━" * 80)
+        logger.info("━" * 80)
+        logger.info("")
         
-        # Also save to file (backup, will be lost on redeploy)
+        # Also save to file (backup)
         log_entry = {
             'timestamp': datetime.now().isoformat(),
             'user_id': user_id,
             'username': username,
             'message': message,
-            'response': response[:500]
+            'response': response
         }
         
         log_dir = 'logs'
@@ -132,11 +149,9 @@ async def log_conversation(user_id, username, message, response):
         log_file = os.path.join(log_dir, f"conversations_{datetime.now().strftime('%Y%m')}.jsonl")
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + '\n')
-            
-        logger.info(f"✅ Conversation also saved to file: {log_file}")
         
     except Exception as e:
-        logger.error(f"❌ Error logging conversation: {e}", exc_info=True)
+        logger.error(f"❌ CHYBA PŘI LOGOVÁNÍ: {e}", exc_info=True)
 
 def is_user_registered(user_id):
     """Check if user is registered"""
@@ -145,7 +160,7 @@ def is_user_registered(user_id):
 def register_user(user_id):
     """Register a new user"""
     REGISTERED_USERS.add(user_id)
-    logger.info(f"📋 Total registered users: {len(REGISTERED_USERS)}")
+    logger.info(f"📋 Celkem registrovaných uživatelů: {len(REGISTERED_USERS)}")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command with beta code registration"""
@@ -167,7 +182,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Pošlete mi otázku nebo fotku problému!"
             )
             await update.message.reply_text(welcome_message, parse_mode='Markdown')
-            logger.info(f"🔄 Returning user: {username} (ID: {user_id})")
+            logger.info(f"🔄 Vracející se user: {username} (ID: {user_id})")
             return
         
         # Not registered, ask for code
@@ -180,7 +195,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Kontaktujte autora pro přístup do beta testu.",
             parse_mode='Markdown'
         )
-        logger.info(f"🚫 Unregistered user tried to start: {username} (ID: {user_id})")
+        logger.info(f"🚫 Neregistrovaný user: {username} (ID: {user_id})")
         return
     
     # Get beta code from command
@@ -196,14 +211,18 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Správný formát: `/start VÁŠ_KÓD`",
             parse_mode='Markdown'
         )
-        logger.warning(f"⚠️ Invalid code attempt: {username} (ID: {user_id}) used: {beta_code}")
+        logger.warning(f"⚠️ Neplatný kód: {username} (ID: {user_id}) použil: {beta_code}")
         return
     
     # Register user
     register_user(user_id)
     
     # Successful registration!
-    logger.info(f"✅ NEW REGISTRATION: {username} (ID: {user_id}) with code: {beta_code}")
+    logger.info("")
+    logger.info("🎉" * 40)
+    logger.info(f"🎉 NOVÁ REGISTRACE! User: {username} | ID: {user_id} | Kód: {beta_code}")
+    logger.info("🎉" * 40)
+    logger.info("")
     
     # Welcome message
     welcome_message = (
@@ -289,11 +308,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
             parse_mode='Markdown'
         )
-        logger.warning(f"⚠️ Unregistered user tried to message: {username} (ID: {user_id})")
+        logger.warning(f"⚠️ Neregistrovaný user zkusil poslat zprávu: {username} (ID: {user_id})")
         return
     
     message_text = update.message.text
-    logger.info(f"📩 Received message from {username}: {message_text[:50]}...")
+    logger.info(f"📩 Zpráva od {username}: {message_text[:80]}{'...' if len(message_text) > 80 else ''}")
     
     await update.message.chat.send_action("typing")
     
@@ -314,7 +333,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
         
         # Call Claude API with only relevant KB
-        logger.info("🤖 Calling Claude API...")
+        logger.info("🤖 Volám Claude API...")
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2000,
@@ -325,17 +344,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         bot_response = response.content[0].text
-        logger.info(f"✅ Claude response: {len(bot_response)} chars")
+        logger.info(f"✅ Claude odpověděl: {len(bot_response)} znaků")
         
         # Log conversation
         await log_conversation(user_id, username, message_text, bot_response)
         
         # Send response
         await update.message.reply_text(bot_response, parse_mode='Markdown')
-        logger.info("📤 Response sent successfully")
+        logger.info("📤 Odpověď odeslána")
         
     except Exception as e:
-        logger.error(f"❌ Error processing message: {e}", exc_info=True)
+        logger.error(f"❌ CHYBA při zpracování zprávy: {e}", exc_info=True)
         
         error_msg = "Omlouvám se, něco se pokazilo."
         
@@ -356,24 +375,24 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Pro použití bota se prosím nejdřív zaregistrujte pomocí `/start VÁŠ_KÓD`",
             parse_mode='Markdown'
         )
-        logger.warning(f"⚠️ Unregistered user tried to send photo: {username} (ID: {user_id})")
+        logger.warning(f"⚠️ Neregistrovaný user zkusil poslat fotku: {username} (ID: {user_id})")
         return
     
     photo = update.message.photo[-1]
     caption = update.message.caption or "Analyzuj tuto fotku auta a poraď mi co s tím."
-    logger.info(f"📸 Received photo from {username}")
+    logger.info(f"📸 Fotka od {username}")
     
     await update.message.chat.send_action("typing")
     
     try:
         # Download photo
-        logger.info("⬇️ Downloading photo...")
+        logger.info("⬇️ Stahuji fotku...")
         photo_file = await photo.get_file()
         photo_bytes = await photo_file.download_as_bytearray()
         
         # Convert to base64
         photo_base64 = base64.b64encode(photo_bytes).decode('utf-8')
-        logger.info(f"📦 Photo size: {len(photo_base64)} chars")
+        logger.info(f"📦 Fotka: {len(photo_base64)} znaků base64")
         
         # Use minimal KB for photos (just FREE topics to save tokens)
         minimal_kb = KB_CACHE.get('free', '')
@@ -389,7 +408,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
         
         # Call Claude API with image
-        logger.info("🤖 Calling Claude API with image...")
+        logger.info("🤖 Volám Claude API s fotkou...")
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=1500,
@@ -416,17 +435,17 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         bot_response = response.content[0].text
-        logger.info(f"✅ Photo analysis complete: {len(bot_response)} chars")
+        logger.info(f"✅ Analýza fotky hotová: {len(bot_response)} znaků")
         
         # Log conversation
-        await log_conversation(user_id, username, f"[PHOTO] {caption}", bot_response)
+        await log_conversation(user_id, username, f"[FOTKA] {caption}", bot_response)
         
         # Send response
         await update.message.reply_text(bot_response, parse_mode='Markdown')
-        logger.info("📤 Photo analysis sent successfully")
+        logger.info("📤 Analýza fotky odeslána")
         
     except Exception as e:
-        logger.error(f"❌ Error processing photo: {e}", exc_info=True)
+        logger.error(f"❌ CHYBA při analýze fotky: {e}", exc_info=True)
         
         error_msg = "Omlouvám se, něco se pokazilo při analýze fotky."
         
@@ -439,27 +458,28 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle errors"""
-    logger.error(f"❌ Update {update} caused error {context.error}", exc_info=context.error)
+    logger.error(f"❌ ERROR: {context.error}", exc_info=context.error)
 
 def main():
     """Start the bot"""
-    logger.info("="*60)
-    logger.info("🚀 Starting AutoDetailing Bot...")
-    logger.info("="*60)
+    logger.info("")
+    logger.info("=" * 80)
+    logger.info("🚀 SPOUŠTÍM AUTODETAILING BOTA...")
+    logger.info("=" * 80)
     
     if not TELEGRAM_BOT_TOKEN:
-        logger.error("❌ TELEGRAM_BOT_TOKEN not found!")
+        logger.error("❌ TELEGRAM_BOT_TOKEN nenalezen!")
         return
     
     if not ANTHROPIC_API_KEY:
-        logger.error("❌ ANTHROPIC_API_KEY not found!")
+        logger.error("❌ ANTHROPIC_API_KEY nenalezen!")
         return
     
-    logger.info(f"🔑 Token: {TELEGRAM_BOT_TOKEN[:10]}...")
-    logger.info(f"🔑 API key: {ANTHROPIC_API_KEY[:20]}...")
-    logger.info(f"📚 KB files loaded: {len(KB_CACHE)}")
-    logger.info(f"🎫 Beta codes: MVBOT26, VIPYOU26")
-    logger.info(f"📝 Conversation logging: {'ENABLED' if LOG_CONVERSATIONS else 'DISABLED'}")
+    logger.info(f"🔑 Telegram token: {TELEGRAM_BOT_TOKEN[:10]}...")
+    logger.info(f"🔑 Anthropic API key: {ANTHROPIC_API_KEY[:20]}...")
+    logger.info(f"📚 Načteno KB souborů: {len(KB_CACHE)}")
+    logger.info(f"🎫 Beta kódy: MVBOT26, VIPYOU26")
+    logger.info(f"📝 Logování konverzací: {'ZAPNUTO' if LOG_CONVERSATIONS else 'VYPNUTO'}")
     
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
@@ -470,11 +490,12 @@ def main():
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_error_handler(error_handler)
     
-    logger.info("="*60)
-    logger.info("✅ BOT IS RUNNING!")
-    logger.info("="*60)
-    logger.info("💡 Logs are being saved to Railway stdout")
-    logger.info("💡 View logs in Railway: Deployments → View Logs")
+    logger.info("=" * 80)
+    logger.info("✅ BOT BĚŽÍ!")
+    logger.info("=" * 80)
+    logger.info("💡 Logy jsou v Railway → Deployments → View Logs")
+    logger.info("💡 httpx spam je VYPNUTÝ - vidíte jen důležité události")
+    logger.info("")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

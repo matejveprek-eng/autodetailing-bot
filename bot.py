@@ -93,7 +93,7 @@ def get_relevant_kb(user_message):
     keywords = {
         'leštění': ['leštění', 'lešti', 'leštit', 'škrában', 'hologram', 'opravu', 'pdr', 'disk', 'světl', 'odřen'],
         'ošetření': ['vosk', 'nano', 'keramik', 'ošetření', 'ochran', 'ppf', 'fólie', 'pneumatik', 'plast'],
-        'interiér': ['interiér', 'sedačk', 'kůže', 'kobere', 'tepován', 'vysáv', 'volant', 'displej', 'klimatizac'],
+        'interiér': ['interiér', 'sedačk', 'kůže', 'kobere', 'tepován', 'vysáv', 'volant', 'displej', 'klimatizac', 'zápach', 'smrd', 'kouř', 'kouřák', 'kouření'],
         'sezóna': ['jaro', 'jar', 'zima', 'zim', 'nový vůz', 'používaný', 'sezón'],
         'mytí': ['dekontaminace', 'hmyz', 'smůla', 'mytí', 'myj', 'umýt', 'čištění', 'lepidlo', 'samolepka', 'nálepka', 'lakovna', 'lakovn'],
     }

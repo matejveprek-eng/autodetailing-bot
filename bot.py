@@ -95,7 +95,7 @@ def get_relevant_kb(user_message):
         'ošetření': ['vosk', 'nano', 'keramik', 'ošetření', 'ochran', 'ppf', 'fólie', 'pneumatik', 'plast'],
         'interiér': ['interiér', 'sedačk', 'kůže', 'kobere', 'tepován', 'vysáv', 'volant', 'displej', 'klimatizac'],
         'sezóna': ['jaro', 'jar', 'zima', 'zim', 'nový vůz', 'používaný', 'sezón'],
-        'mytí': ['dekontaminace', 'hmyz', 'smůla', 'mytí', 'myj', 'umýt', 'čištění'],
+        'mytí': ['dekontaminace', 'hmyz', 'smůla', 'mytí', 'myj', 'umýt', 'čištění', 'lepidlo', 'samolepka', 'nálepka', 'lakovna', 'lakovn'],
     }
     
     # Find best match

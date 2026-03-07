@@ -4,6 +4,96 @@ Tento soubor obsahuje kompletní knowledge base pro kategorii.
 
 ---
 
+# MYTÍ PO LAKOVNĚ [PREMIUM]
+
+## ÚVOD
+
+Mytí vozu po lakování nebo pokud dlouho stál venku. Na voze je prach, často **abrazivní prach po broušení** a stání venku.
+
+---
+
+## POSTUP
+
+### 1. PŘEDMYTÍ - OPAKOVANÉ
+
+**Aplikace:**
+1. Aplikujte předmytí
+2. **Klidně aplikujte předmytí vícekrát** před opláchnutím
+3. Nečistoty **odmočíte** a půjdou lépe spláchnout
+
+---
+
+### 2. OPLACH VYSOKOTLAKEM
+
+⚠️ **POZOR:** Oplachujte **odspodu nahoru**, abyste viděli kde jste oplachovali tlakem a kde ne.
+
+---
+
+### 3. MYTÍ ŠAMPONEM
+
+⚠️ **DŮLEŽITÉ:**
+- Myjte šamponem **až po důkladném oplachu**
+- **NEPOUŽÍVEJTE molitanové houby** - mohou se zbytky nečistot poškrábat lak
+- Mnohem lepší jsou **mikrovláknové mycí rukavice**
+
+**Postup:**
+1. **Netlačte na mycí pomůcku**
+2. Začněte **opatrnými tahy**
+3. Mycí pomůcku/rukavici **pravidelně oplachujte** v kýblu se šamponem
+
+---
+
+### 4. OPLACH A SUŠENÍ
+
+1. Na závěr **dobře vůz opláchněte**
+2. **Vysušte**
+
+---
+
+## KONTROLA PO MYTÍ
+
+### PROHLÉDNĚTE DETAILNĚ VÝZ
+
+**Hledejte záprach čirým lakem:**
+- **Šedivé fleky**, často ohraničené, jakoby hranou pásky
+- Zkontrolujte i **okna od záprachu**
+
+**V případě záprachu na laku:**
+- Bude asi potřeba **lak vyleštit**
+- Nebo **odstranit záprach acetonem** a pak doleštit
+- Clay hmota je na to sice přímo určená, ale **často není dostatečně účinná**
+
+---
+
+## ČIŠTĚNÍ INTERIÉRU PO LAKOVNĚ
+
+**Vhodné by bylo vysát a vyčistit interiér.**
+
+### Proč?
+
+Může se v interiéru držet **typický zápach z lakovny**.
+
+**Dokud nevyčistíte prach a chemicky celý interiér**, tak hrozí že lakovnu budete cítit.
+
+⚠️ **POZOR:** Používat ozón, pohlcovače zápachu aj. vylepšováky **bez čištění** je buď ztráta času, nebo se zápach velmi rychle vrátí.
+
+---
+
+## OŠETŘENÍ PO MYTÍ
+
+**Opravené a lakované díly** i ty leštěné při čištění **ošetřete**.
+
+⚠️ **DŮLEŽITÉ:**
+- **Čerstvě lakované** nechejte cca **14 dní dozrát** než na ně dáte keramiku
+- **Vosk můžete dát prakticky hned**
+
+---
+
+**SOUVISEJÍCÍ TÉMATA:** Dekontaminace laku chemická, Strojní leštění, Voskování, Aplikace NANO povlaku
+
+
+---
+
 # DEKONTAMINACE LAKU CHEMICKÁ [PREMIUM]
 
 ## POTŘEBNÉ VYBAVENÍ
@@ -402,4 +492,3 @@ Smůlu běžným mytím dolů nesundáte, ani nejde vodou odmočit.
 
 
 ---
-

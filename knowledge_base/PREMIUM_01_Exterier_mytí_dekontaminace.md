@@ -52,7 +52,7 @@ Mytí vozu po lakování nebo pokud dlouho stál venku. Na voze je prach, často
 
 ## KONTROLA PO MYTÍ
 
-### PROHLÉDNĚTE DETAILNĚ VÝZ
+### PROHLÉDNĚTE DETAILNĚ VŮZ
 
 **Hledejte záprach čirým lakem:**
 - **Šedivé fleky**, často ohraničené, jakoby hranou pásky
@@ -385,7 +385,67 @@ Smůlu běžným mytím dolů nesundáte, ani nejde vodou odmočit.
 
 ---
 
-**SOUVISEJÍCÍ TÉMATA:** Dekontaminace laku chemická, Čištění hmyzu, Ruční mytí vozidla
+**SOUVISEJÍCÍ TÉMATA:** Odstranění lepidla po samolepkách, Dekontaminace laku chemická, Čištění hmyzu, Ruční mytí vozidla
+
+
+---
+
+# ODSTRANĚNÍ LEPIDLA PO SAMOLEPKÁCH [PREMIUM]
+
+## POTŘEBNÉ VYBAVENÍ
+
+- Odstraňovač asfaltu/téru
+- Mikrovláknová utěrka
+
+---
+
+## DŮLEŽITÉ TIPY
+
+⚠️ **Nikdy lepidlo nedrhněte z laku násilím.**
+
+💡 **Lepidlo musíte chemicky odmočit a odstranit - stejně jako smůlu.**
+
+---
+
+## POSTUP
+
+### 1. APLIKACE PŘÍPRAVKU
+
+**Nanášení:**
+- Naneste odstraňovač asfaltu do mikrovláknové utěrky
+
+---
+
+### 2. PŮSOBENÍ
+
+**Přiložení:**
+- Přiložte utěrku s přípravkem na lepidlo
+- Nechejte **minutu/dvě** působit
+- Utěrku přizvedávejte a sledujte, jestli přípravek proniká do lepidla
+
+---
+
+### 3. ČIŠTĚNÍ
+
+**Kontrola:**
+- Po pár minutách zkuste lehkým pohybem utěrky přes lepidlo
+- Jestli už lepidlo nepovolilo nebo nezačíná mizet
+- Můžete do utěrky přidat přípravek pro zvýšení účinnosti
+
+**Dočištění:**
+- Pár lehkými, krátkými tahy dočistěte zbytky lepidla
+
+---
+
+### 4. FINALIZACE
+
+**Závěr:**
+- Suchou, čistou stranou mikrovláknové utěrky vytřete zbytky čističe
+- Doleštěte čištěné místo
+
+---
+
+**SOUVISEJÍCÍ TÉMATA:** Smůla ze stromů, Dekontaminace laku chemická, Ruční mytí vozidla
 
 
 ---

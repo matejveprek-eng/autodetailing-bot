@@ -320,16 +320,48 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Select relevant knowledge base
         relevant_kb = get_relevant_kb(message_text)
         
-        # Strict enforcement prefix
+        # NEW STRICT PREFIX - Anti-hallucination with transparency
         strict_prefix = """
-⚠️ KRITICKÉ INSTRUKCE - DODRŽUJ PŘÍSNĚ:
-1. Odpovídej POUZE na základě KNOWLEDGE BASE níže
-2. NIKDY nepoužívej informace ze svého tréninku
-3. NIKDY nevymýšlej termíny nebo postupy které nejsou v knowledge base
-4. Pokud něco není v KB → řekni to upřímně
-5. Nepoužívej fráze: "obecně se doporučuje", "profesionálové používají", "standardní postup je"
-6. Používej POUZE terminologii z knowledge base (ne "compound", "cut and polish", atd.)
-7. PŘED odpovědí zkontroluj: Je to SKUTEČNĚ v knowledge base?
+⚠️ KRITICKÉ INSTRUKCE - PŘEČTI POZORNĚ:
+
+TVOJE KNOWLEDGE BASE obsahuje OVĚŘENÉ postupy z PRAXE.
+NA INTERNETU je spousta BULLSHIT návodů které v praxi nefungují.
+
+PROTO:
+
+1. POUŽÍVEJ POUZE informace z KNOWLEDGE BASE níže
+   - Pokud je postup v KB → vysvětli ho DETAILNĚ
+   - Pokud NENÍ v KB → PŘIZNEJ TO upřímně
+
+2. NIKDY nevymýšlej:
+   - Produkty které nejsou v KB (ne "kabinový filtr", "čistič s knotem", atd.)
+   - Kroky které nejsou v KB
+   - "Vylepšování" KB vlastními znalostmi
+
+3. BUĎ TRANSPARENTNÍ:
+   - Když něco NENÍ v KB → řekni: "Toto v návodech nemám přesně popsané"
+   - Nabídni: "Můžu zkusit poradit obecně, ale nebude to ověřené praxí"
+
+4. BUĎ VÝŘEČNÝ ale POCTIVÝ:
+   - ✅ Detailní vysvětlení
+   - ✅ Zdůvodnění PROČ
+   - ✅ Praktické tipy z KB
+   - ✅ Varování před chybami
+   - ❌ Bullshit z internetu
+   - ❌ Vymýšlení
+
+5. NIKDY nepoužívej fráze:
+   - "obecně se doporučuje"
+   - "profesionálové používají"
+   - "standardní postup je"
+   → Toto jsou signály že vymýšlíš!
+
+KONTROLA PŘED ODPOVĚDÍ:
+✓ Je KAŽDÝ produkt/krok z KB?
+✓ Pokud něco nevím → přiznávám to?
+✓ Nepoužívám bullshit z internetu?
+
+Pamatuj: LEPŠÍ říct "nevím" než uvést uživatele v omyl!
 """
         
         # Call Claude API with only relevant KB
@@ -397,9 +429,9 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Use minimal KB for photos (just FREE topics to save tokens)
         minimal_kb = KB_CACHE.get('free', '')
         
-        # Strict enforcement prefix
+        # Strict enforcement prefix for photos
         strict_prefix = """
-⚠️ KRITICKÉ INSTRUKCE - DODRŽUJ PŘÍSNĚ:
+⚠️ KRITICKÉ INSTRUKCE:
 1. Odpovídej POUZE na základě KNOWLEDGE BASE níže
 2. NIKDY nepoužívej informace ze svého tréninku
 3. NIKDY nevymýšlej termíny nebo postupy které nejsou v knowledge base

@@ -171,17 +171,17 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args or len(context.args) == 0:
         # Check if already registered
         if is_user_registered(user_id):
-            welcome_message = (
+            welcome_back_message = (
                 "👋 Vítejte zpět!\n\n"
-                "Jsem tu, abych vám pomohl s péčí o vaše auto.\n\n"
-                "**Co umím:**\n"
-                "✅ Poradit s mytím, leštěním, ošetřením\n"
-                "✅ Analyzovat fotky problémů na voze\n"
-                "✅ Navrhnout postup krok za krokem\n"
-                "✅ Varovat před chybami\n\n"
-                "Pošlete mi otázku nebo fotku problému!"
+                "**Zkuste třeba:**\n"
+                "• Jak správně umýt auto?\n"
+                "• Jak odstranit škrábance z laku?\n"
+                "• Co dělat se zápachem v interiéru?\n"
+                "• Jak aplikovat vosk nebo keramiku?\n"
+                "• Pošlete fotku problému na voze\n\n"
+                "Nebo se zeptejte na cokoliv! 🚗"
             )
-            await update.message.reply_text(welcome_message, parse_mode='Markdown')
+            await update.message.reply_text(welcome_back_message, parse_mode='Markdown')
             logger.info(f"🔄 Vracející se user: {username} (ID: {user_id})")
             return
         
@@ -224,23 +224,24 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("🎉" * 40)
     logger.info("")
     
-    # Welcome message
+    # NEW IMPROVED Welcome message with starter questions
     welcome_message = (
         "🎉 **Registrace úspěšná!**\n\n"
-        "👋 Vítejte v AutoDetailing Asistentovi!\n\n"
-        "Jsem tu, abych vám pomohl s péčí o vaše auto.\n\n"
-        "**Co umím:**\n"
-        "✅ Poradit s mytím, leštěním, ošetřením\n"
-        "✅ Analyzovat fotky problémů na voze\n"
-        "✅ Navrhnout postup krok za krokem\n"
-        "✅ Varovat před chybami\n\n"
-        "**Beta test:**\n"
-        "Tato verze je v testování. Vaše zpětná vazba je neocenitelná!\n"
-        "Konverzace zaznamenávám pro vylepšení služby.\n\n"
-        "**Jak začít:**\n"
-        "- Pošlete mi otázku o péči o auto\n"
-        "- Nebo pošlete fotku problému\n\n"
-        "Zkuste třeba: _\"Jak správně umýt auto?\"_"
+        "Jsem tu, abych vám pomohl s péčí o vaše auto!\n\n"
+        "**💡 Zkuste mě třeba:**\n\n"
+        "**Základy:**\n"
+        "• Jak správně umýt auto?\n"
+        "• Jak mám vyčistit interiér?\n\n"
+        "**Problémy:**\n"
+        "• Jak odstranit škrábance?\n"
+        "• Co dělat se zápachem v autě?\n"
+        "• Jak vyčistit fleky na sedačkách?\n\n"
+        "**Pokročilé:**\n"
+        "• Jak aplikovat vosk nebo keramiku?\n"
+        "• Jak funguje strojní leštění?\n\n"
+        "**📸 Nebo:**\n"
+        "Prostě mi pošlete **fotku problému** a já vám poradím!\n\n"
+        "Napište cokoliv co vás zajímá 👇"
     )
     
     await update.message.reply_text(welcome_message, parse_mode='Markdown')

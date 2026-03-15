@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.request import HTTPXRequest
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import base64
@@ -495,18 +496,27 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Start the bot"""
+    print("=" * 100)
+    print("🚀🚀🚀 BOT STARTING 🚀🚀🚀")
+    print("=" * 100)
+    
     logger.info("")
     logger.info("=" * 80)
     logger.info("🚀 SPOUŠTÍM AUTODETAILING BOTA...")
     logger.info("=" * 80)
     
     if not TELEGRAM_BOT_TOKEN:
+        print("❌❌❌ TELEGRAM_BOT_TOKEN CHYBÍ! ❌❌❌")
         logger.error("❌ TELEGRAM_BOT_TOKEN nenalezen!")
         return
     
     if not ANTHROPIC_API_KEY:
+        print("❌❌❌ ANTHROPIC_API_KEY CHYBÍ! ❌❌❌")
         logger.error("❌ ANTHROPIC_API_KEY nenalezen!")
         return
+    
+    print(f"✅ Telegram token: {TELEGRAM_BOT_TOKEN[:10]}...")
+    print(f"✅ Anthropic API key: {ANTHROPIC_API_KEY[:20]}...")
     
     logger.info(f"🔑 Telegram token: {TELEGRAM_BOT_TOKEN[:10]}...")
     logger.info(f"🔑 Anthropic API key: {ANTHROPIC_API_KEY[:20]}...")
@@ -514,8 +524,23 @@ def main():
     logger.info(f"🎫 Beta kódy: MVBOT26, VIPYOU26")
     logger.info(f"📝 Logování konverzací: {'ZAPNUTO' if LOG_CONVERSATIONS else 'VYPNUTO'}")
     
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    print("🔧 Creating application with longer timeout for Railway...")
     
+    # Create request with longer timeout for Railway network
+    request = HTTPXRequest(
+        connection_pool_size=8,
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=30.0
+    )
+    
+    application = Application.builder()\
+        .token(TELEGRAM_BOT_TOKEN)\
+        .request(request)\
+        .build()
+    
+    print("📝 Adding handlers...")
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
@@ -529,6 +554,10 @@ def main():
     logger.info("💡 Logy jsou v Railway → Deployments → View Logs")
     logger.info("💡 httpx spam je VYPNUTÝ - vidíte jen důležité události")
     logger.info("")
+    
+    print("=" * 100)
+    print("🎉🎉🎉 BOT JE RUNNING - POLLING STARTED 🎉🎉🎉")
+    print("=" * 100)
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
